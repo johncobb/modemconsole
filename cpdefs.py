@@ -7,7 +7,8 @@ class CpDefs:
     Port = "1337"
     ServerFolder = "/pings"
     #ModemPort = "/dev/tty.usbserial-FTELSNMW"
-    ModemPort = "/dev/ttyO4"
+    #ModemPort = "/dev/ttyO4"
+    ModemPort = "/dev/serial0" # New Serial Aliasing (ls -l /dev)
     ModemBaudrate = 115200
     #RfPort = "/dev/tty.usbserial-FTELSNMW"
     RfPort = "/dev/ttyO2"
