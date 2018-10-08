@@ -4,8 +4,6 @@ import Queue
 import serial
 from cpdefs import CpDefs
 from datetime import datetime
-#import Adafruit_BBIO.UART as UART
-#import Adafruit_BBIO.GPIO as GPIO
 
 class CpModemResultCode:
     RESULT_UNKNOWN = 0
@@ -90,11 +88,11 @@ class CpModem(threading.Thread):
         self.data_buffer = Queue.Queue(128)
         self.modem_timeout = 0
         self.modemResponseCallbackFunc = modemResponseCallbackFunc
+        self.callbackPending = False
         self.modemBusy = False
         self.modemResult = CpModemResult()
         self.modemToken = ""
         #self.data_buffer = ""
-        #self.ser = serial.Serial(device, baudrate=115200, parity='N', stopbits=1, bytesize=8, xonxoff=0, rtscts=0)
         self.ser = serial.Serial(CpDefs.ModemPort, baudrate=CpDefs.ModemBaudrate, parity='N', stopbits=1, bytesize=8, xonxoff=0, rtscts=0)
         threading.Thread.__init__(self)
         
@@ -126,11 +124,15 @@ class CpModem(threading.Thread):
     def modem_send(self, cmd):
         print 'sending modem command ', cmd
         #self.__lock.acquire()
-        #self.ser.write(cmd + '\r')
         self.ser.write(cmd)
         #self.__lock.release()
-    
-    
+
+    def setCallbackPending(self, state):
+        self.callbackPending = state
+
+    def isCallbackPending(self):
+        return self.callbackPending
+
     def modem_handler(self):
         tmp_buffer = ""
         
@@ -164,6 +166,7 @@ class CpModem(threading.Thread):
                         if(self.modemResponseCallbackFunc != None):
                             self.modemResponseCallbackFunc(result)
                             self.modemBusy = False
+                            self.callbackPending = False
                     #print 'modem response ', tmp_buffer
                     tmp_buffer= ""
                 else:
@@ -174,6 +177,7 @@ class CpModem(threading.Thread):
                     
     def enqueue_command(self, cmd):
         try:
+            self.callbackPending = True
             self.modemBusy = True
             self.commands.put(cmd, block=True, timeout=1)
         except:
@@ -246,59 +250,11 @@ class CpModem(threading.Thread):
             modem_result.ResultCode = CpModemResultCode.RESULT_UNKNOWN
                 
         return modem_result
-            
-    
-    def modem_init(self):
-        pass
-        '''
-        print 'Setting up UART1...'
-        UART.setup("UART1")
-        print 'Setting up UART2...'
-        UART.setup("UART2")
-        print 'Setting up UART4...'
-        UART.setup("UART4")
-        print 'Setting up UART5...'
-        UART.setup("UART5")
-        
-    
-        print 'Initializing GPIO(s)'
-        
-        GPIO.setup("P9_12", GPIO.OUT) #CELL_ENABLE
-        GPIO.setup("P9_23", GPIO.OUT) #CELL_RESET
-        GPIO.setup("P8_12", GPIO.OUT) #CELL_ONOFF
-        
-        GPIO.output("P9_12", GPIO.LOW)
-        GPIO.output("P9_23", GPIO.LOW)
-        GPIO.output("P8_12", GPIO.LOW)
-        
-        time.sleep(3)
-        
-        print 'Setting CELL_ON/OFF HIGH'
-        GPIO.output("P8_12", GPIO.HIGH)
-        time.sleep(5)
-        print 'Wait (5)s...'
-        print 'Setting CELL_ON/OFF LOW'
-        GPIO.output("P8_12", GPIO.LOW)
-        '''
-    
-    def modem_reset(self):
-        
-        '''
-        print 'Setting CELL_ON/OFF HIGH'
-        GPIO.output("P8_12", GPIO.HIGH)
-        time.sleep(5)
-        print 'Wait (5)s...'
-        print 'Setting CELL_ON/OFF LOW'
-        GPIO.output("P8_12", GPIO.LOW)
-        '''
-
  
     def modem_send_at(self, callback):
         self.enqueue_command(CpModemDefs.CMD_AT)
         self.modemResponseCallbackFunc = callback
         pass
-
-
 
     def modem_set_echo_off(self, callback):
         self.enqueue_command(CpModemDefs.CMD_SETECHOOFF)
@@ -420,4 +376,32 @@ class CpModem(threading.Thread):
         self.modemResponseCallbackFunc = callback
         pass 
         
-        
+
+modemBuffer = None
+
+def onDataReceived(data):
+    modemBuffer = data
+    print 'received this data: ', data
+
+
+if __name__ == "__main__":
+
+    print 'running cpmodem.py...'
+    waitForCallback = False
+    modemThread = CpModem(onDataReceived)
+    modemThread.start()
+
+    modemThread.enqueue_command("AT\r")
+    #modemThread.setCallbackPending(True)
+
+    while True:
+        print 'waitingForCallback: ', modemThread.isCallbackPending()
+        if modemThread.isCallbackPending() == False:
+            modemThread.shutdown_thread()
+            break
+
+        time.sleep(.5)
+
+    while(modemThread.isAlive()):
+        print 'waiting for CpModem shutdown isAlive=', modemThread.isAlive()
+        time.sleep(.5)

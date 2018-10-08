@@ -49,11 +49,6 @@ class CpConsole(threading.Thread):
                 # input = input(">> ")
             if input == 'exit' or input == 'EXIT':
                 self.shutdown_thread()
-            else:
-                cmd = "%s\r" % input
-                self.modem.enqueue_command(cmd)
-                #self.taskMgr.enqueue_command(input)
-            '''
             elif input == 'commat':
                 self.comm.comm_at()
             elif input == 'commcfg':
@@ -78,6 +73,5 @@ class CpConsole(threading.Thread):
                 cmd = "%s\r" % input
                 self.modem.enqueue_command(cmd)
                 #self.taskMgr.enqueue_command(input)
-            '''
                 
             time.sleep(.0001)

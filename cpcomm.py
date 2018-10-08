@@ -354,8 +354,3 @@ class CpComm(threading.Thread):
                     self.comm_exit_state()
                     return CpStateResult.SUCCESS
 
-        
-    
-        
-        
-        
